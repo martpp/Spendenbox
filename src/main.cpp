@@ -39,59 +39,19 @@ void printDistance()
 
 void setup()
 {
+    pinMode(SD_CS, OUTPUT);
+    digitalWrite(SD_CS, HIGH);
+    SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
     Serial.begin(115200);
-
-    // Print the list of files in the SD card
-    Serial.println("Initializing SD card...");
     if (!SD.begin(SD_CS))
     {
-        Serial.println("ERROR - SD card initialization failed!");
-        return;
+        Serial.println("Error talking to SD card!");
+        while (true)
+            ; // end program
     }
-
-    File root = SD.open("/");
-    // Print files in the root directory
-    while (true)
-    {
-        File entry = root.openNextFile();
-        if (!entry)
-        {
-            // No more files
-            break;
-        }
-        Serial.print(entry.name());
-        if (entry.isDirectory())
-        {
-            Serial.println("/");
-        }
-        else
-        {
-            // Files have sizes, directories do not
-            Serial.print("\t\t");
-            Serial.println(entry.size(), DEC);
-        }
-        entry.close();
-    }
-    root.close();
-
-    // Sensor initialization
-
-    Wire.begin(); // Start I2C library
-    delay(100);   // delay .1s
-
-    if (sensor.VL6180xInit() != 0)
-    {
-        Serial.println("Failed to initialize. Freezing..."); // Initialize device and check for errors
-        while (1)
-            ;
-    }
-
-    sensor.VL6180xDefautSettings(); // Load default settings to get started.
+    audio.setPinout(MAX98357A_BCLK, MAX98357A_LRC, MAX98357A_DOUT);
+    audio.setVolume(15); // 0...21
+    audio.connecttoFS(SD, "/nggyu.mp3");
 }
 
-void loop()
-{
-    // Print the measured distance
-    printDistance();
-    delay(1000);
-}
+void loop() { audio.loop(); }
