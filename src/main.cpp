@@ -1,10 +1,10 @@
 #include <Arduino.h>
-#include <WiFi.h>
 #include <Audio.h>
-#include <Wire.h>
-#include <SparkFun_VL6180X.h>
-#include <SPI.h>
 #include <SD.h>
+#include <SPI.h>
+#include <SparkFun_VL6180X.h>
+#include <WiFi.h>
+#include <Wire.h>
 
 #include "config.h"
 
@@ -13,9 +13,10 @@
 #define MAX98357A_BCLK 27
 #define MAX98357A_LRC 26
 
-// Define pins for VL6180X
+// Definitions for VL6180X
 #define VL6180X_SCL 22
 #define VL6180X_SDA 21
+#define VL6180X_ADDRESS 0x29
 
 // Define pins for micro SD card adapter
 #define SD_CS 5
@@ -23,43 +24,18 @@
 #define SD_MISO 19
 #define SD_SCK 18
 
+// VL6180X sensor
+VL6180x sensor(VL6180X_ADDRESS);
+
 // Audio board
 Audio audio;
 
-// VL6180X sensor
-//VL6180x vl6180x();
-
-// Method for printing all the files in the SD card
-void printDirectory(File dir, int numTabs)
+// Method to print the measured distance of the VL6180X sensor
+void printDistance()
 {
-  while (true)
-  {
-    File entry = dir.openNextFile();
-    if (!entry)
-    {
-      // no more files
-      break;
-    }
-    for (uint8_t i = 0; i < numTabs; i++)
-    {
-      Serial.print('\t');
-    }
-    Serial.print(entry.name());
-    if (entry.isDirectory())
-    {
-      Serial.println("/");
-      printDirectory(entry, numTabs + 1);
-    }
-    else
-    {
-      // files have sizes, directories do not
-      Serial.print("\t\t");
-      Serial.println(entry.size(), DEC);
-    }
-    entry.close();
-  }
+    Serial.print("Distance (mm): ");
+    Serial.println(sensor.getDistance());
 }
-
 
 void setup()
 {
@@ -74,11 +50,48 @@ void setup()
     }
 
     File root = SD.open("/");
-    printDirectory(root, 0);
+    // Print files in the root directory
+    while (true)
+    {
+        File entry = root.openNextFile();
+        if (!entry)
+        {
+            // No more files
+            break;
+        }
+        Serial.print(entry.name());
+        if (entry.isDirectory())
+        {
+            Serial.println("/");
+        }
+        else
+        {
+            // Files have sizes, directories do not
+            Serial.print("\t\t");
+            Serial.println(entry.size(), DEC);
+        }
+        entry.close();
+    }
     root.close();
 
+    // Sensor initialization
+
+    Wire.begin(); // Start I2C library
+    delay(100);   // delay .1s
+
+    if (sensor.VL6180xInit() != 0)
+    {
+        Serial.println("Failed to initialize. Freezing..."); // Initialize device and check for errors
+        while (1)
+            ;
+    }
+
+    sensor.VL6180xDefautSettings(); // Load default settings to get started.
 }
 
 void loop()
 {
+    // Print the measured distance
+    printDistance();
+    delay(1000);
 }
