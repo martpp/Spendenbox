@@ -3,6 +3,8 @@
 #include <Audio.h>
 #include <Wire.h>
 #include <SparkFun_VL6180X.h>
+#include <SPI.h>
+#include <SD.h>
 
 #include "config.h"
 
@@ -21,3 +23,62 @@
 #define SD_MISO 19
 #define SD_SCK 18
 
+// Audio board
+Audio audio;
+
+// VL6180X sensor
+//VL6180x vl6180x();
+
+// Method for printing all the files in the SD card
+void printDirectory(File dir, int numTabs)
+{
+  while (true)
+  {
+    File entry = dir.openNextFile();
+    if (!entry)
+    {
+      // no more files
+      break;
+    }
+    for (uint8_t i = 0; i < numTabs; i++)
+    {
+      Serial.print('\t');
+    }
+    Serial.print(entry.name());
+    if (entry.isDirectory())
+    {
+      Serial.println("/");
+      printDirectory(entry, numTabs + 1);
+    }
+    else
+    {
+      // files have sizes, directories do not
+      Serial.print("\t\t");
+      Serial.println(entry.size(), DEC);
+    }
+    entry.close();
+  }
+}
+
+
+void setup()
+{
+    Serial.begin(115200);
+
+    // Print the list of files in the SD card
+    Serial.println("Initializing SD card...");
+    if (!SD.begin(SD_CS))
+    {
+        Serial.println("ERROR - SD card initialization failed!");
+        return;
+    }
+
+    File root = SD.open("/");
+    printDirectory(root, 0);
+    root.close();
+
+}
+
+void loop()
+{
+}
