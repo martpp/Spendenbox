@@ -37,48 +37,63 @@ Audio audio;
 String getRandomFilename(char* directory)
 {
     File root = SD.open(directory);
-    File file = root.openNextFile();
     int count = 0;
-    while (file)
+    while (root.openNextFile())
     {
         count++;
-        file = root.openNextFile();
     }
     root.close();
+
+    if (count == 0)
+    {
+        return "";
+    }
+
     root = SD.open(directory);
-    int random = rand() % count;
-    count = 0;
-    file = root.openNextFile();
+    int randomIndex = random(count);
+    int reservoirIndex = 0;
+    File file = root.openNextFile();
+    String reservoir;
+
     while (file)
     {
-        if (count == random)
+        if (reservoirIndex < randomIndex)
         {
-            root.close();
-            return file.name();
+            reservoir = file.name();
         }
-        count++;
+        else if (random(reservoirIndex + 1) == randomIndex)
+        {
+            reservoir = file.name();
+        }
+
+        reservoirIndex++;
         file = root.openNextFile();
     }
+
     root.close();
-    return "";
+    return reservoir;
 }
 
 // Method to play random audio file from SD card in directory
 void playRandomAudio(char* directory)
 {
     if (audio.isRunning())
+    {
         return;
+    }
+
     String filename = getRandomFilename(directory);
+
     if (filename != "")
     {
         Serial.print("Playing ");
         Serial.println(filename);
-        // Check if file ends with .wav
+
+        // Check if file ends with .mp3
         if (filename.endsWith(".mp3"))
         {
-            // append directory to filename (e.g. /smallmp3/1.mp3)
-            filename = String(directory) + "/" + filename;
-            audio.connecttoFS(SD, filename.c_str());
+            String filepath = String(directory) + "/" + filename;
+            audio.connecttoFS(SD, filepath.c_str());
         }
         else
         {
@@ -117,22 +132,26 @@ void setup()
     }
 
     sensor.VL6180xDefautSettings();
+    // audio.connecttoFS(SD, "/nggyu.mp3");
 }
 
 void loop()
 {
-    if (sensor.getDistance() < 20.) // big money
+    if (!audio.isRunning())
     {
-        digitalWrite(LED_BUILTIN, HIGH);
-        playRandomAudio("/bigmp3");
+        if (sensor.getDistance() < 30.) // big money
+        {
+            digitalWrite(LED_BUILTIN, HIGH);
+            playRandomAudio("/bigmp3");
+        }
+        else if (sensor.getDistance() < 55.) // small money
+        {
+            digitalWrite(LED_BUILTIN, HIGH);
+            playRandomAudio("/smallmp3");
+        }
+        else
+            digitalWrite(LED_BUILTIN, LOW);
     }
-    else if (sensor.getDistance() < 55.) // small money
-    {
-        digitalWrite(LED_BUILTIN, HIGH);
-        playRandomAudio("/smallmp3");
-    }
-    else
-        digitalWrite(LED_BUILTIN, LOW);
 
     audio.loop();
 }
